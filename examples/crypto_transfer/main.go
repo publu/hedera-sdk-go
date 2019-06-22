@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/hashgraph/hedera-sdk-go"
+	"github.com/launchbadge/hedera-sdk-go"
 	"os"
 	"time"
 )
 
 func main() {
 	// Read and decode the operator secret key
+	operatorAccountID := hedera.AccountID{Account: 2}
 	operatorSecret, err := hedera.SecretKeyFromString(os.Getenv("OPERATOR_SECRET"))
 	if err != nil {
 		panic(err)
@@ -24,12 +25,16 @@ func main() {
 	// Connect to Hedera
 	//
 
-	client, err := hedera.Dial("testnet.hedera.com:50001")
+	client, err := hedera.Dial("testnet.hedera.com:50003")
 	if err != nil {
 		panic(err)
 	}
 
-	// TODO: client.SetRetryOnFailure(0) // default: 5
+	client.SetNode(hedera.AccountID{Account: 3})
+	client.SetOperator(operatorAccountID, func() hedera.SecretKey {
+		return operatorSecret
+	})
+
 	defer client.Close()
 
 	//
@@ -48,8 +53,7 @@ func main() {
 	//
 
 	nodeAccountID := hedera.AccountID{Account: 3}
-	operatorAccountID := hedera.AccountID{Account: 2}
-	response, err := client.TransferCrypto().
+	transaction, err := client.TransferCrypto().
 		// Move 100 out of operator account
 		Transfer(operatorAccountID, -100).
 		// And place in our new account
@@ -65,8 +69,7 @@ func main() {
 		panic(err)
 	}
 
-	transactionID := response.ID
-	fmt.Printf("transferred; transaction = %v\n", transactionID)
+	fmt.Printf("transferred; transaction = %v\n", transaction.String())
 
 	//
 	// Get receipt to prove we sent ok
@@ -75,7 +78,7 @@ func main() {
 	fmt.Printf("wait for 2s...\n")
 	time.Sleep(2 * time.Second)
 
-	receipt, err := client.Transaction(*transactionID).Receipt().Get()
+	receipt, err := client.Transaction(transaction).Receipt().Get()
 	if err != nil {
 		panic(err)
 	}

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/hashgraph/hedera-sdk-go"
+	"github.com/launchbadge/hedera-sdk-go"
 	"os"
 	"time"
 )
@@ -29,12 +29,11 @@ func main() {
 	// Connect to Hedera
 	//
 
-	client, err := hedera.Dial("testnet.hedera.com:50001")
+	client, err := hedera.Dial("testnet.hedera.com:50003")
 	if err != nil {
 		panic(err)
 	}
 
-	// TODO: client.SetRetryOnFailure(0) // default: 5
 	defer client.Close()
 
 	//
@@ -43,7 +42,7 @@ func main() {
 
 	nodeAccountID := hedera.AccountID{Account: 3}
 	operatorAccountID := hedera.AccountID{Account: 2}
-	response, err := client.CreateAccount().
+	transaction, err := client.CreateAccount().
 		Key(public).
 		InitialBalance(0).
 		Operator(operatorAccountID).
@@ -56,8 +55,7 @@ func main() {
 		panic(err)
 	}
 
-	transactionID := response.ID
-	fmt.Printf("created account; transaction = %v\n", transactionID)
+	fmt.Printf("created account; transaction = %v\n", transaction.String())
 
 	//
 	// Get receipt to prove we created it ok
@@ -66,7 +64,7 @@ func main() {
 	fmt.Printf("wait for 2s...\n")
 	time.Sleep(2 * time.Second)
 
-	receipt, err := client.Transaction(*transactionID).Receipt().Get()
+	receipt, err := client.Transaction(transaction).Receipt().Get()
 	if err != nil {
 		panic(err)
 	}
